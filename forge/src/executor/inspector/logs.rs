@@ -4,12 +4,9 @@ use crate::executor::{
 use bytes::Bytes;
 use ethers::{
     abi::{AbiDecode, RawLog, Token},
-    types::{Address, H256, U256},
+    types::H256,
 };
-use revm::{
-    db::Database, opcode, CallContext, CreateScheme, EVMData, Gas, Inspector, Machine, Return,
-    Transfer,
-};
+use revm::{db::Database, opcode, CallInputs, EVMData, Gas, Inspector, Interpreter, Return};
 
 /// An inspector that collects logs during execution.
 ///
@@ -24,20 +21,25 @@ impl LogCollector {
         Self { logs: Vec::new() }
     }
 
-    fn log(&mut self, machine: &Machine, n: u8) {
-        let (offset, len) =
-            (try_or_return!(machine.stack().peek(0)), try_or_return!(machine.stack().peek(1)));
+    fn log(&mut self, interpreter: &Interpreter, n: u8) {
+        let (offset, len) = (
+            try_or_return!(interpreter.stack().peek(0)),
+            try_or_return!(interpreter.stack().peek(1)),
+        );
         let data = if len.is_zero() {
             Vec::new()
         } else {
-            machine.memory.get_slice(as_usize_or_return!(offset), as_usize_or_return!(len)).to_vec()
+            interpreter
+                .memory
+                .get_slice(as_usize_or_return!(offset), as_usize_or_return!(len))
+                .to_vec()
         };
 
         let n = n as usize;
         let mut topics = Vec::with_capacity(n);
         for i in 0..n {
             let mut topic = H256::zero();
-            try_or_return!(machine.stack.peek(2 + i)).to_big_endian(topic.as_bytes_mut());
+            try_or_return!(interpreter.stack.peek(2 + i)).to_big_endian(topic.as_bytes_mut());
             topics.push(topic);
         }
 
@@ -68,90 +70,37 @@ impl<DB> Inspector<DB> for LogCollector
 where
     DB: Database,
 {
-    fn initialize(&mut self, _: &mut EVMData<'_, DB>) {}
-
-    fn initialize_machine(&mut self, _: &mut Machine, _: &mut EVMData<'_, DB>, _: bool) -> Return {
-        Return::Continue
-    }
-
-    fn step(&mut self, machine: &mut Machine, _: &mut EVMData<'_, DB>, _is_static: bool) -> Return {
-        match machine.contract.code[machine.program_counter()] {
-            opcode::LOG0 => self.log(machine, 0),
-            opcode::LOG1 => self.log(machine, 1),
-            opcode::LOG2 => self.log(machine, 2),
-            opcode::LOG3 => self.log(machine, 3),
-            opcode::LOG4 => self.log(machine, 4),
+    fn step(
+        &mut self,
+        interpreter: &mut Interpreter,
+        _: &mut EVMData<'_, DB>,
+        _is_static: bool,
+    ) -> Return {
+        match interpreter.contract.code[interpreter.program_counter()] {
+            opcode::LOG0 => self.log(interpreter, 0),
+            opcode::LOG1 => self.log(interpreter, 1),
+            opcode::LOG2 => self.log(interpreter, 2),
+            opcode::LOG3 => self.log(interpreter, 3),
+            opcode::LOG4 => self.log(interpreter, 4),
             _ => (),
         }
 
         Return::Continue
     }
 
-    fn step_end(&mut self, _: Return, _: &mut Machine) -> Return {
-        Return::Continue
-    }
-
     fn call(
         &mut self,
         _: &mut EVMData<'_, DB>,
-        to: Address,
-        _: &CallContext,
-        _: &Transfer,
-        input: &Bytes,
-        _: u64,
+        call: &CallInputs,
         _: bool,
     ) -> (Return, Gas, Bytes) {
-        if to == *HARDHAT_CONSOLE_ADDRESS {
-            let (status, reason) = self.hardhat_log(input.to_vec());
+        if call.contract == *HARDHAT_CONSOLE_ADDRESS {
+            let (status, reason) = self.hardhat_log(call.input.to_vec());
             (status, Gas::new(0), reason)
         } else {
             (Return::Continue, Gas::new(0), Bytes::new())
         }
     }
-
-    fn call_end(
-        &mut self,
-        _: &mut EVMData<'_, DB>,
-        _: Address,
-        _: &CallContext,
-        _: &Transfer,
-        _: &Bytes,
-        _: u64,
-        _: u64,
-        _: Return,
-        _: &Bytes,
-        _: bool,
-    ) {
-    }
-
-    fn create(
-        &mut self,
-        _: &mut EVMData<'_, DB>,
-        _: Address,
-        _: &CreateScheme,
-        _: U256,
-        _: &Bytes,
-        _: u64,
-    ) -> (Return, Option<Address>, Gas, Bytes) {
-        (Return::Continue, None, Gas::new(0), Bytes::new())
-    }
-
-    fn create_end(
-        &mut self,
-        _: &mut EVMData<'_, DB>,
-        _: Address,
-        _: &CreateScheme,
-        _: U256,
-        _: &Bytes,
-        _: Return,
-        _: Option<Address>,
-        _: u64,
-        _: u64,
-        _: &Bytes,
-    ) {
-    }
-
-    fn selfdestruct(&mut self) {}
 }
 
 /// Converts a call to Hardhat's `console.log` to a DSTest `log(string)` event.
