@@ -17,14 +17,6 @@ codegen-units = 1
 panic = "abort"
 debug = true
 
-# HACK: Patch for ethabi until primitive-types is updated.
-#
-# Needs updates in ethabi, and then ethers-rs, and then foundry.
-#
-# See: https://github.com/rust-ethereum/ethabi/pull/262
-[patch."https://github.com/rust-ethereum/ethabi"]
-ethabi = { git = "https://github.com/jeffreybolle/ethabi", branch = "master", default-features = false, features = ["full-serde", "rlp"] }
-
 ## Patch ethers-rs with a local checkout
 #[patch."https://github.com/gakonst/ethers-rs"]
 #ethers = { path = "../ethers-rs" }

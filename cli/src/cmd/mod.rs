@@ -113,7 +113,7 @@ pub fn manual_compile(
             // return the diagnostics error back to the user.
             eyre::bail!(output.to_string())
         }
-        return Ok(output)
+        return Ok(output);
     }
 
     let mut solc = project.solc.clone();
@@ -153,9 +153,9 @@ fn get_artifact_from_name(
     let mut has_found_contract = false;
     let mut contract_artifact = None;
 
-    for (name, artifact) in compiled.into_artifacts() {
+    for (id, artifact) in compiled.into_artifacts() {
         // if the contract name
-        let mut split = name.split(':');
+        let mut split = id.name.split(':');
         let mut artifact_contract_name =
             split.next().ok_or_else(|| eyre::Error::msg("no contract name provided"))?;
         if let Some(new_name) = split.next() {
@@ -175,6 +175,7 @@ fn get_artifact_from_name(
         Some(artifact) => (
             artifact
                 .abi
+                .map(|abi| abi.into())
                 .ok_or_else(|| eyre::Error::msg(format!("abi not found for {}", contract.name)))?,
             artifact.bytecode.ok_or_else(|| {
                 eyre::Error::msg(format!("bytecode not found for {}", contract.name))

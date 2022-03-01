@@ -112,7 +112,7 @@ impl BindArgs {
     /// Check that the existing bindings match the expected abigen output
     fn check_existing_bindings(&self) -> eyre::Result<()> {
         let bindings = self.get_multi()?.build()?;
-        println!("Checking bindings for {} contracts", bindings.len());
+        println!("Checking bindings");
         if self.gen_crate() {
             bindings.ensure_consistent_crate(
                 &self.crate_name,
@@ -129,7 +129,7 @@ impl BindArgs {
     /// Generate the bindings
     fn generate_bindings(&self) -> eyre::Result<()> {
         let bindings = self.get_multi()?.build()?;
-        println!("Generating bindings for {} contracts", bindings.len());
+        println!("Generating bindings");
         if self.gen_crate() {
             bindings.write_to_crate(
                 &self.crate_name,
@@ -150,7 +150,7 @@ impl Cmd for BindArgs {
     fn run(self) -> eyre::Result<Self::Output> {
         if !self.overwrite && self.bindings_exist() {
             println!("Bindings found. Checking for consistency.");
-            return self.check_existing_bindings()
+            return self.check_existing_bindings();
         }
 
         if self.overwrite {

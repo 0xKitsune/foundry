@@ -57,7 +57,7 @@ impl MultiContractRunnerBuilder {
         // artifacts
         let contracts = output
             .into_artifacts()
-            .map(|(n, c)| (n, c.into_contract_bytecode()))
+            .map(|(a, c)| (a.name, c.into_contract_bytecode()))
             .collect::<BTreeMap<String, CompactContractBytecode>>();
         let mut known_contracts: BTreeMap<String, (Abi, Vec<u8>)> = Default::default();
 
