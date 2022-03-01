@@ -64,12 +64,6 @@ impl<DB> Inspector<DB> for InspectorStack<DB>
 where
     DB: Database,
 {
-    fn initialize(&mut self, data: &mut EVMData<'_, DB>) {
-        for inspector in &mut self.inspectors {
-            inspector.initialize(data)
-        }
-    }
-
     fn initialize_interp(
         &mut self,
         interpreter: &mut Interpreter,
@@ -81,7 +75,7 @@ where
 
             // Allow inspectors to exit early
             if status != Return::Continue {
-                return status;
+                return status
             }
         }
 
@@ -99,7 +93,7 @@ where
 
             // Allow inspectors to exit early
             if status != Return::Continue {
-                return status;
+                return status
             }
         }
 
@@ -118,7 +112,7 @@ where
 
             // Allow inspectors to exit early
             if status != Return::Continue {
-                return status;
+                return status
             }
         }
 
@@ -136,7 +130,7 @@ where
 
             // Allow inspectors to exit early
             if status != Return::Continue {
-                return (status, gas, retdata);
+                return (status, gas, retdata)
             }
         }
 
@@ -149,12 +143,20 @@ where
         call: &CallInputs,
         remaining_gas: Gas,
         status: Return,
-        retdata: &Bytes,
+        retdata: Bytes,
         is_static: bool,
-    ) {
+    ) -> (Return, Gas, Bytes) {
         for inspector in &mut self.inspectors {
-            inspector.call_end(data, call, remaining_gas, status, retdata, is_static);
+            let (new_status, new_gas, new_retdata) =
+                inspector.call_end(data, call, remaining_gas, status, retdata.clone(), is_static);
+
+            // If the inspector returns a different status we assume it wants to tell us something
+            if new_status != status {
+                return (new_status, new_gas, new_retdata)
+            }
         }
+
+        (status, remaining_gas, retdata)
     }
 
     fn create(
@@ -167,7 +169,7 @@ where
 
             // Allow inspectors to exit early
             if status != Return::Continue {
-                return (status, addr, gas, retdata);
+                return (status, addr, gas, retdata)
             }
         }
 
