@@ -106,6 +106,10 @@ pub struct ScriptArgs {
     #[arg(long)]
     pub broadcast: bool,
 
+    // TODO:
+    #[arg(long, default_value = "true")]
+    pub wait_for_pending: bool,
+
     /// Batch size of transactions.
     ///
     /// This is ignored and set to 1 if batching is not available or `--slow` is enabled.
@@ -213,6 +217,7 @@ impl ScriptArgs {
     /// Executes the script
     pub async fn run_script(self) -> Result<()> {
         trace!(target: "script", "executing script command");
+        let wait_for_pending = self.wait_for_pending;
 
         let compiled = self.preprocess().await?.compile()?;
 
@@ -234,7 +239,7 @@ impl ScriptArgs {
                 .await?;
 
             if pre_simulation.args.debug {
-                return pre_simulation.run_debugger()
+                return pre_simulation.run_debugger();
             }
 
             if pre_simulation.args.json {
@@ -280,7 +285,11 @@ impl ScriptArgs {
         }
 
         // Wait for pending txes and broadcast others.
-        let broadcasted = bundled.wait_for_pending().await?.broadcast().await?;
+        let broadcasted = if wait_for_pending {
+            bundled.wait_for_pending().await?.broadcast().await?
+        } else {
+            bundled.broadcast().await?
+        };
 
         if broadcasted.args.verify {
             broadcasted.verify().await?;
@@ -426,9 +435,9 @@ impl ScriptArgs {
         }
 
         // Only prompt if we're broadcasting and we've not disabled interactivity.
-        if prompt_user &&
-            !self.non_interactive &&
-            !Confirm::new().with_prompt("Do you wish to continue?".to_string()).interact()?
+        if prompt_user
+            && !self.non_interactive
+            && !Confirm::new().with_prompt("Do you wish to continue?".to_string()).interact()?
         {
             eyre::bail!("User canceled the script.");
         }
