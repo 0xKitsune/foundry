@@ -84,7 +84,7 @@ pub struct ScriptArgs {
     pub target_contract: Option<String>,
 
     /// The signature of the function you want to call in the contract, or raw calldata.
-    #[arg(long, short, default_value = "run()")]
+    #[arg(long, default_value = "run()")]
     pub sig: String,
 
     /// Max priority fee per gas for EIP1559 transactions.
@@ -234,7 +234,7 @@ impl ScriptArgs {
                 .await?;
 
             if pre_simulation.args.debug {
-                return pre_simulation.run_debugger()
+                return pre_simulation.run_debugger();
             }
 
             if pre_simulation.args.json {
@@ -426,9 +426,9 @@ impl ScriptArgs {
         }
 
         // Only prompt if we're broadcasting and we've not disabled interactivity.
-        if prompt_user &&
-            !self.non_interactive &&
-            !Confirm::new().with_prompt("Do you wish to continue?".to_string()).interact()?
+        if prompt_user
+            && !self.non_interactive
+            && !Confirm::new().with_prompt("Do you wish to continue?".to_string()).interact()?
         {
             eyre::bail!("User canceled the script.");
         }
