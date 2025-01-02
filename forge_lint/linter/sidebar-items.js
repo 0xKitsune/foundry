@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Severity"],"struct":["LinterOutput","ProjectLinter","SourceLocation"],"trait":["Lint","Linter"]};
