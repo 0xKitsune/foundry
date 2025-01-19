@@ -23,6 +23,7 @@ use yansi::Paint;
 ///
 /// # Required Methods
 ///
+/// TODO: update this
 /// - `lint`: Scans the provided source files and returns a [`LinterOutput`] containing categorized
 ///   findings or an error if linting fails.
 pub trait Linter: Send + Sync + Clone {
@@ -31,26 +32,6 @@ pub trait Linter: Send + Sync + Clone {
     type LinterError: Error + Send + Sync + 'static;
 
     fn lint(&self, input: &[PathBuf]) -> Result<(), Self::LinterError>;
-}
-
-pub struct ProjectLinter<L>
-where
-    L: Linter,
-{
-    pub linter: L,
-}
-
-impl<L> ProjectLinter<L>
-where
-    L: Linter,
-{
-    pub fn new(linter: L) -> Self {
-        Self { linter }
-    }
-
-    pub fn lint(self, input: &[PathBuf]) -> eyre::Result<()> {
-        Ok(self.linter.lint(input)?)
-    }
 }
 
 pub trait Lint: Hash {

@@ -1,16 +1,12 @@
 use clap::{Parser, ValueHint};
 use eyre::Result;
 use forge_lint::{
-    linter::{ProjectLinter, Severity},
+    linter::{Linter, Severity},
     sol::SolidityLinter,
 };
 use foundry_cli::utils::LoadConfig;
 use foundry_config::impl_figment_convert_basic;
-use solar_interface::{
-    diagnostics::{DiagCtxt, Diagnostic, DynEmitter, HumanEmitter, Level},
-    ColorChoice, SourceMap,
-};
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, path::PathBuf};
 
 /// CLI arguments for `forge lint`.
 #[derive(Clone, Debug, Parser)]
@@ -66,17 +62,11 @@ impl LintArgs {
             std::process::exit(0);
         }
 
-        let source_map = Arc::new(SourceMap::empty());
-
-        let linter = if project.compiler.solc.is_some() {
-            SolidityLinter::new().with_severity(self.severity)
+        if project.compiler.solc.is_some() {
+            SolidityLinter::new().with_severity(self.severity).lint(&sources)?;
         } else {
             todo!("Linting not supported for this language");
         };
-
-        let output = ProjectLinter::new(linter).lint(&sources)?;
-
-        // sh_println!("{}", &output)?;
 
         Ok(())
     }
