@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SolLint","SolLintError"],"macro":["declare_sol_lints"],"mod":["gas","high","info","med"],"struct":["AsmKeccak256","DivideBeforeMultiply","IncorrectShift","ScreamingSnakeCase","SolidityLinter","StructPascalCase","VariableMixedCase"]};
