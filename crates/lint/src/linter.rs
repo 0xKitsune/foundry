@@ -1,14 +1,7 @@
 use clap::ValueEnum;
 use core::fmt;
 use foundry_compilers::Language;
-use solar_ast::Span;
-use std::{
-    collections::{BTreeMap, HashMap},
-    error::Error,
-    hash::Hash,
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-};
+use std::{error::Error, hash::Hash, path::PathBuf};
 use yansi::Paint;
 
 /// Trait representing a generic linter for analyzing and reporting issues in smart contract source

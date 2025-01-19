@@ -74,8 +74,7 @@ impl Linter for SolidityLinter {
                                 Severity::Low | Severity::Info | Severity::Gas => Level::Note,
                             };
 
-                            let _ =
-                                sess.dcx.diag::<()>(level, lint.description()).span(span).emit();
+                            sess.dcx.diag::<()>(level, lint.description()).span(span).emit();
                         }
                     }
                     Ok(())
