@@ -56,8 +56,9 @@ impl Linter for SolidityLinter {
                     SolLint::all()
                 };
 
-                let sess =
-                    Session::builder().with_stderr_emitter_and_color(ColorChoice::Always).build();
+                let mut sess = Session::builder().with_stderr_emitter().build();
+                sess.dcx = sess.dcx.set_flags(|flags| flags.track_diagnostics = false);
+
                 let arena = Arena::new();
 
                 let _ = sess.enter(|| -> solar_interface::Result<()> {
