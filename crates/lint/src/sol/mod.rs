@@ -12,7 +12,7 @@ use std::{
 use foundry_compilers::solc::SolcLanguage;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use solar_ast::{visit::Visit, Arena, SourceUnit};
-use solar_interface::{diagnostics::Level, ColorChoice, Session, Span};
+use solar_interface::{diagnostics::Level, Session, Span};
 use thiserror::Error;
 
 use crate::linter::{Lint, Linter, Severity};
@@ -69,13 +69,14 @@ impl Linter for SolidityLinter {
                     // Run all lints on the parsed AST
                     for lint in lints.iter_mut() {
                         for span in lint.lint(&ast) {
-                            let level = match lint.severity() {
-                                Severity::High => Level::Error,
-                                Severity::Med => Level::Warning,
-                                Severity::Low | Severity::Info | Severity::Gas => Level::Note,
-                            };
-
-                            sess.dcx.diag::<()>(level, lint.description()).span(span).emit();
+                            sess.dcx
+                                .diag::<()>(
+                                    Level::Warning,
+                                    format!("{}: {}", lint.severity(), lint.description()),
+                                )
+                                .span(span)
+                                .help(lint.help().unwrap_or_default())
+                                .emit()
                         }
                     }
                     Ok(())
@@ -104,7 +105,7 @@ pub enum SolLintError {}
 /// - `$description`: A short description of the lint.
 /// - `$url`: URL providing additional information about the lint or best practices.
 macro_rules! declare_sol_lints {
-    ($(($name:ident, $severity:expr, $lint_name:expr, $description:expr, $url:expr)),* $(,)?) => {
+    ($(($name:ident, $severity:expr, $lint_name:expr, $description:expr, $help:expr)),* $(,)?) => {
         #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
         pub enum SolLint {
             $(
@@ -190,12 +191,12 @@ macro_rules! declare_sol_lints {
                 }
             }
 
-            fn url(&self) -> Option<&'static str> {
+            fn help(&self) -> Option<&'static str> {
                 match self {
                     $(
                         SolLint::$name(_) => {
-                            if !$url.is_empty() {
-                                Some($url)
+                            if !$help.is_empty() {
+                                Some($help)
                             } else {
                                 None
                             }
@@ -235,7 +236,7 @@ declare_sol_lints!(
     // TODO: FunctionMixedCase
 
     // Gas Optimizations
-    (AsmKeccak256, Severity::Gas, "asm-keccak256", "Hashing via keccak256 can be done with inline assembly to save gas.", "https://placeholder.xyz"),
+    (AsmKeccak256, Severity::Gas, "asm-keccak256", "Hashing via keccak256 can be done with inline assembly to save gas.", ""),
     // TODO: PackStorageVariables
     // TODO: PackStructs
     // TODO: UseConstantVariable

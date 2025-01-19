@@ -30,7 +30,7 @@ pub trait Linter: Send + Sync + Clone {
 pub trait Lint: Hash {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-    fn url(&self) -> Option<&'static str>;
+    fn help(&self) -> Option<&'static str>;
     fn severity(&self) -> Severity;
 }
 
