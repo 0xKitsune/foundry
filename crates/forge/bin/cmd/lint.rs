@@ -6,7 +6,11 @@ use forge_lint::{
 };
 use foundry_cli::utils::LoadConfig;
 use foundry_config::impl_figment_convert_basic;
-use std::{collections::HashSet, path::PathBuf};
+use solar_interface::{
+    diagnostics::{DiagCtxt, Diagnostic, DynEmitter, HumanEmitter, Level},
+    ColorChoice, SourceMap,
+};
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 /// CLI arguments for `forge lint`.
 #[derive(Clone, Debug, Parser)]
@@ -62,6 +66,8 @@ impl LintArgs {
             std::process::exit(0);
         }
 
+        let source_map = Arc::new(SourceMap::empty());
+
         let linter = if project.compiler.solc.is_some() {
             SolidityLinter::new().with_severity(self.severity)
         } else {
@@ -69,7 +75,8 @@ impl LintArgs {
         };
 
         let output = ProjectLinter::new(linter).lint(&sources)?;
-        sh_println!("{}", &output)?;
+
+        // sh_println!("{}", &output)?;
 
         Ok(())
     }

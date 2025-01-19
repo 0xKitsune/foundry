@@ -12,10 +12,14 @@ use std::{
 use foundry_compilers::solc::SolcLanguage;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use solar_ast::{visit::Visit, Arena, SourceUnit};
-use solar_interface::{ColorChoice, Session, Span};
+use solar_interface::{
+    diagnostics::{DiagCtxt, Level},
+    ColorChoice, Session, Span,
+};
 use thiserror::Error;
+use yansi::Paint;
 
-use crate::linter::{Lint, Linter, LinterOutput, Severity, SourceLocation};
+use crate::linter::{Lint, Linter, Severity};
 
 /// Linter implementation to analyze Solidity source code responsible for identifying
 /// vulnerabilities gas optimizations, and best practices.
@@ -46,56 +50,37 @@ impl Linter for SolidityLinter {
     type Lint = SolLint;
     type LinterError = SolLintError;
 
-    fn lint(&self, input: &[PathBuf]) -> Result<LinterOutput<Self>, Self::LinterError> {
-        let all_findings = input
-            .into_par_iter()
-            .map(|file| {
-                let mut lints = if let Some(severity) = &self.severity {
-                    SolLint::with_severity(severity.to_owned())
-                } else {
-                    SolLint::all()
-                };
+    fn lint(&self, input: &[PathBuf]) -> Result<(), Self::LinterError> {
+        let all_findings = input.into_par_iter().map(|file| {
+            let mut lints = if let Some(severity) = &self.severity {
+                SolLint::with_severity(severity.to_owned())
+            } else {
+                SolLint::all()
+            };
 
-                // Initialize session and parsing environment
-                let sess = Session::builder().with_buffer_emitter(ColorChoice::Auto).build();
-                let arena = Arena::new();
+            // Initialize session and parsing environment
+            let sess =
+                Session::builder().with_stderr_emitter_and_color(ColorChoice::Always).build();
+            let arena = Arena::new();
 
-                // Enter the session context for this thread
-                let _ = sess.enter(|| -> solar_interface::Result<()> {
-                    let mut parser = solar_parse::Parser::from_file(&sess, &arena, file)?;
-                    let ast =
-                        parser.parse_file().map_err(|e| e.emit()).expect("Failed to parse file");
+            // Enter the session context for this thread
+            let _ = sess.enter(|| -> solar_interface::Result<()> {
+                let mut parser = solar_parse::Parser::from_file(&sess, &arena, file)?;
+                let ast = parser.parse_file().map_err(|e| e.emit()).expect("Failed to parse file");
 
-                    // Run all lints on the parsed AST and collect findings
-                    for lint in lints.iter_mut() {
-                        lint.lint(&ast);
+                // Run all lints on the parsed AST
+                for lint in lints.iter_mut() {
+                    for span in lint.lint(&ast) {
+                        let _ =
+                            sess.dcx.diag::<()>(Level::Help, lint.description()).span(span).emit();
                     }
-
-                    Ok(())
-                });
-
-                (file.to_owned(), lints)
-            })
-            .collect::<Vec<(PathBuf, Vec<SolLint>)>>();
-
-        let mut output = LinterOutput::new();
-        for (file, lints) in all_findings {
-            for lint in lints {
-                let source_locations = lint
-                    .results()
-                    .iter()
-                    .map(|span| SourceLocation::new(file.clone(), *span))
-                    .collect::<Vec<_>>();
-
-                if source_locations.is_empty() {
-                    continue;
                 }
 
-                output.insert(lint, source_locations);
-            }
-        }
+                Ok(())
+            });
+        });
 
-        Ok(output)
+        Ok(())
     }
 }
 
